@@ -38,3 +38,7 @@ mimetypes.restricted.expression=video*
 ```
 
 Above every video mime type will be blocked, but many other filters can be included.
+
+Selecting restricted folders
+----------------------------
+By using default Alfresco Share folder action ```Manage Aspects```, *Mime Type Restrictable* aspect can be applied to desired folders.
