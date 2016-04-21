@@ -23,7 +23,7 @@ public class MimeTypeBlockerBehaviour implements ContentServicePolicies.OnConten
     
     public void init() {
         policyComponent.bindClassBehaviour(ContentServicePolicies.OnContentPropertyUpdatePolicy.QNAME, ContentModel.TYPE_CONTENT, 
-        		new JavaBehaviour(this, "onContentPropertyUpdate", Behaviour.NotificationFrequency.TRANSACTION_COMMIT));
+        		new JavaBehaviour(this, "onContentPropertyUpdate", Behaviour.NotificationFrequency.EVERY_EVENT));
     }
     
 	@Override
