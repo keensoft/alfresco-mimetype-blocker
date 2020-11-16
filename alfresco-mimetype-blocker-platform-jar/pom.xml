@@ -23,6 +23,7 @@
 		 <artifactId>alfresco-share-services</artifactId>
 		 <version>${alfresco.platform.version}</version>
 		 <classifier>classes</classifier>
+		 <scope>provided</scope>
 	   </dependency>	
     </dependencies>
 
