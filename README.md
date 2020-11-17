@@ -6,14 +6,14 @@ This addon provides an Alfresco extension to define a mime type black list at ``
 
 Once this addon is running, no uploading is allowed to selected folders by using black listed mime types.
 
-The plugin is licensed under the [LGPL v3.0](http://www.gnu.org/licenses/lgpl-3.0.html). The current version is 3.0.0, which is compatible with Alfresco 6.x and onwards.
+The plugin is licensed under the [LGPL v3.0](http://www.gnu.org/licenses/lgpl-3.0.html). The current version is 2.0.0, which is compatible with Alfresco 6.x and onwards.
 
 Downloading the ready-to-deploy-plugin
 --------------------------------------
 The binary distribution is made of two AMP files:
 
-* [repo AMP](https://github.com/abhinavmishra14/alfresco-mimetype-blocker/releases/download/3.0.0/alfresco-mimetype-blocker-platform-1.0-SNAPSHOT.amp)
-* [share AMP](https://github.com/abhinavmishra14/alfresco-mimetype-blocker/releases/download/3.0.0/alfresco-mimetype-blocker-share-1.0-SNAPSHOT.amp)
+* [repo AMP](https://github.com/keensoft/alfresco-mimetype-blocker/releases/download/2.0.0/mimetype-blocker-repo.amp)
+* [share AMP](https://github.com/keensoft/alfresco-mimetype-blocker/releases/download/2.0.0/mimetype-blocker-share.amp)
 
 You can install it by using standard [Alfresco deployment tools](http://docs.alfresco.com/community/tasks/dev-extensions-tutorials-simple-module-install-amp.html)
 
