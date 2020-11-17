@@ -1,0 +1,1 @@
+#Space for web pages such as html, jsp etc.
