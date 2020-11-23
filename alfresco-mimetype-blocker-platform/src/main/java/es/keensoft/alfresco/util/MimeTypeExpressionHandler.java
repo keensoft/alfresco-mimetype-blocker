@@ -5,7 +5,6 @@ import org.alfresco.service.cmr.repository.ContentData;
 import org.alfresco.service.cmr.repository.MimetypeService;
 import org.alfresco.service.cmr.repository.NodeRef;
 import org.alfresco.service.cmr.repository.NodeService;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +57,8 @@ public class MimeTypeExpressionHandler {
 	 */
 	public Boolean isRestricted(final String mimeType) {
 		if (LOGGER.isDebugEnabled()) {
-			LOGGER.debug("isRestricted invoked for mimetype: {}", mimeType);
+			LOGGER.debug("isRestricted invoked for mimetype: '{}' , where restricted mimetypes are: '{}'", mimeType,
+					restrictedMimetypesExpression);
 		}
 		Boolean restricted = false;
 		switch (expressionType) {
@@ -83,6 +83,9 @@ public class MimeTypeExpressionHandler {
 		default:
 			break;
 		}
+		if (LOGGER.isDebugEnabled()) {
+			LOGGER.debug("Is mimetype: '{}' restricted? : {}", mimeType, restricted);
+		}
 		return restricted;
 	}
 
@@ -94,9 +97,6 @@ public class MimeTypeExpressionHandler {
 	 * @return the boolean
 	 */
 	private Boolean evaluateSimpleCondition(final String mimeType, final String condition) {
-		if (LOGGER.isDebugEnabled()) {
-			LOGGER.debug("evaluateSimpleCondition invoked for mimetype: {} and condition: {}", mimeType, condition);
-		}
 		Boolean restricted = false;
 		switch (getExpressionType(condition)) {
 		case NONE:
@@ -138,9 +138,6 @@ public class MimeTypeExpressionHandler {
 	 * @return the expression type
 	 */
 	private EXPRESSION_TYPE getExpressionType(final String expression) {
-		if (LOGGER.isDebugEnabled()) {
-			LOGGER.debug("getExpressionType invoked for expression: {}", expression);
-		}
 		if (expression.indexOf(SEPARATOR) != -1) {
 			return EXPRESSION_TYPE.LIST;
 		} else if (expression.startsWith(WILDCARD_PREFIX) && expression.endsWith(WILDCARD_PREFIX)) {
@@ -159,33 +156,24 @@ public class MimeTypeExpressionHandler {
 	/**
 	 * Gets the mime type.
 	 *
-	 * @param nodeRef the node ref
-	 * @param nodeService the node service
-	 * @param mimetypeService the mimetype service
 	 * @param contentData the content data
 	 * @return the mime type
 	 */
-	public String getMimeType(final NodeRef nodeRef, final NodeService nodeService,
-			final MimetypeService mimetypeService, final ContentData contentData) {
-		String mimeType = StringUtils.EMPTY;
-		if (contentData != null) {
-			mimeType = contentData.getMimetype();
-		} else {
-			final String fileName = (String) nodeService.getProperty(nodeRef, ContentModel.PROP_NAME);
-			mimeType = guessMimeType(fileName, mimetypeService);
-		}
-		return mimeType;
+	public String getMimeType(final ContentData contentData) {
+		return contentData.getMimetype();
 	}
 	
 	/**
 	 * Guess mime type.
 	 *
-	 * @param fileName the file name
+	 * @param nodeRef the node ref
+	 * @param nodeService the node service
 	 * @param mimetypeService the mimetype service
 	 * @return the string
 	 */
-	public String guessMimeType(final String fileName,
+	public String guessMimeType(final NodeRef nodeRef, final NodeService nodeService,
 			final MimetypeService mimetypeService) {
+		final String fileName = (String) nodeService.getProperty(nodeRef, ContentModel.PROP_NAME);
 		return mimetypeService.guessMimetype(fileName);
 	}
 }

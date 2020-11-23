@@ -2,6 +2,7 @@ package es.keensoft.alfresco.behaviour;
 
 import org.alfresco.model.ContentModel;
 import org.alfresco.repo.content.ContentServicePolicies;
+import org.alfresco.repo.node.NodeServicePolicies;
 import org.alfresco.repo.policy.Behaviour;
 import org.alfresco.repo.policy.JavaBehaviour;
 import org.alfresco.repo.policy.PolicyComponent;
@@ -21,7 +22,7 @@ import es.keensoft.alfresco.util.MimeTypeExpressionHandler;
 /**
  * The Class MimeTypeBlockerBehaviour.
  */
-public class MimeTypeBlockerBehaviour implements ContentServicePolicies.OnContentPropertyUpdatePolicy {
+public class MimeTypeBlockerBehaviour implements ContentServicePolicies.OnContentPropertyUpdatePolicy, NodeServicePolicies.OnCreateNodePolicy {
 
 	/** The Constant LOGGER. */
 	private static final Logger LOGGER = LoggerFactory.getLogger(MimeTypeBlockerBehaviour.class);
@@ -45,10 +46,16 @@ public class MimeTypeBlockerBehaviour implements ContentServicePolicies.OnConten
 		policyComponent.bindClassBehaviour(ContentServicePolicies.OnContentPropertyUpdatePolicy.QNAME,
 				ContentModel.TYPE_CONTENT,
 				new JavaBehaviour(this, "onContentPropertyUpdate", Behaviour.NotificationFrequency.EVERY_EVENT));
+		policyComponent.bindClassBehaviour(NodeServicePolicies.OnCreateNodePolicy.QNAME,
+				ContentModel.TYPE_CONTENT,
+				new JavaBehaviour(this, "onCreateNode", Behaviour.NotificationFrequency.EVERY_EVENT));
 	}
 
 	/**
-	 * On content property update.
+	 * On content property update. This behavior will handle and block content
+	 * updates for the nodes which has restricted mimetypes, specifically upload new
+	 * version scenarios when a node is created without any extension or different
+	 * extension than blacklisted mimetype extensions<br>
 	 *
 	 * @param nodeRef       the node ref
 	 * @param propertyQName the property Q name
@@ -60,30 +67,81 @@ public class MimeTypeBlockerBehaviour implements ContentServicePolicies.OnConten
 			final ContentData afterValue) {
 		if (nodeService.exists(nodeRef)) {
 			if (LOGGER.isDebugEnabled()) {
-				LOGGER.debug("onContentPropertyUpdate invoked for nodeRef: {}", nodeRef);
+				LOGGER.debug("MimeTypeBlockerBehaviour-> onContentPropertyUpdate invoked for nodeRef: {} and contentData: {}", nodeRef, afterValue);
 			}
-			final NodeRef mimetypeRestrictableParent = AuthenticationUtil.runAsSystem(new AuthenticationUtil.RunAsWork<NodeRef>() {
-				@Override
-				public NodeRef doWork() throws Exception {
-					return getParentFolderWithAspect(nodeService.getPrimaryParent(nodeRef).getParentRef(),
-							MimeTypeBlockerModel.ASPECT_MTB_MIMETYPE_RESTRICTABLE);
-				}
-			});
-
+			
+			final NodeRef mimetypeRestrictableParent = getRestrictableParentNode(nodeRef);
 			if (mimetypeRestrictableParent != null) {
 				if (LOGGER.isDebugEnabled()) {
 					LOGGER.debug("Mimetype Restrictable Parent identified, nodeRef: {}", mimetypeRestrictableParent);
 				}
-				final String mimeType = mimeTypeExpressionHandler.getMimeType(nodeRef, nodeService, mimetypeService,
-						afterValue);
-				if (afterValue != null && mimeTypeExpressionHandler.isRestricted(mimeType)) {
-					if (LOGGER.isErrorEnabled()) {
-						LOGGER.error("Mimetype restricted for : {}", mimeType);
+				final String mimeType = mimeTypeExpressionHandler.getMimeType(afterValue);
+				//When node is having an extension which is blacklisted.
+				final String mimeTypeByExtn = mimeTypeExpressionHandler.guessMimeType(nodeRef, nodeService, mimetypeService);
+				if (afterValue != null) {//if has content data
+					//check whether mime type from contentdata and mimetype by extension is same and then validate the mimetype.
+					if(mimeType.equalsIgnoreCase(mimeTypeByExtn) && mimeTypeExpressionHandler.isRestricted(mimeType)) {
+						if (LOGGER.isErrorEnabled()) {
+							LOGGER.error("Mimetype restricted for : {} and contentData: {}", mimeType, afterValue);
+						}
+						throw new RuntimeException("Mimetype " + mimeType + " is not supported");
+					} else if (!mimeType.equalsIgnoreCase(mimeTypeByExtn) && mimeTypeExpressionHandler.isRestricted(mimeTypeByExtn)) {
+						//validate the mimetype by extension since mimetype by content data is different than extension based mimetype
+						if (LOGGER.isErrorEnabled()) {
+							LOGGER.error("Mimetype (by extension) restricted for : {} and contentData: {}", mimeType, afterValue);
+						}
+						throw new RuntimeException("Mimetype (by extension) " + mimeTypeByExtn + " is not supported");
 					}
-					throw new RuntimeException("Mimetype " + mimeType + " is not supported");
 				}
 			}
 		}
+	}
+
+	/**
+	 * On create node. This behavior will handle and block node creation which has restricted mimetypes.
+	 *
+	 * @param childAssocRef the child assoc ref
+	 */
+	@Override
+	public void onCreateNode(final ChildAssociationRef childAssocRef) {
+		final NodeRef nodeRef = childAssocRef.getChildRef();//node which is being created.
+		if (nodeService.exists(nodeRef)) {
+			if (LOGGER.isDebugEnabled()) {
+				LOGGER.debug("MimeTypeBlockerBehaviour-> onCreateNode invoked for nodeRef: {} ", nodeRef);
+			}
+			final NodeRef mimetypeRestrictableParent = getRestrictableParentNode(nodeRef);//Getting parent this way to make sure that mimetypeRestrictable aspect is applied. 
+			if (mimetypeRestrictableParent != null) {
+				if (LOGGER.isDebugEnabled()) {
+					LOGGER.debug("Mimetype Restrictable Parent identified, nodeRef: {}", mimetypeRestrictableParent);
+				}
+				//When node is having an extension which is blacklisted.
+				final String mimeTypeByExtn = mimeTypeExpressionHandler.guessMimeType(nodeRef, nodeService, mimetypeService);
+				if (mimeTypeExpressionHandler.isRestricted(mimeTypeByExtn)) {
+					//Handle for empty object with a restricted extension in the name (we guess the mimetype by extension in this case)
+					if (LOGGER.isErrorEnabled()) {
+						LOGGER.error("Mimetype restricted for : {}", mimeTypeByExtn);
+					}
+					throw new RuntimeException("Mimetype " + mimeTypeByExtn + " is not supported");
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Gets the restrictable parent node.
+	 *
+	 * @param nodeRef the node ref
+	 * @return the restrictable parent node
+	 */
+	private NodeRef getRestrictableParentNode(final NodeRef nodeRef) {
+		final NodeRef mimetypeRestrictableParent = AuthenticationUtil.runAsSystem(new AuthenticationUtil.RunAsWork<NodeRef>() {
+			@Override
+			public NodeRef doWork() throws Exception {
+				return getParentFolderWithAspect(nodeService.getPrimaryParent(nodeRef).getParentRef(),
+						MimeTypeBlockerModel.ASPECT_MTB_MIMETYPE_RESTRICTABLE);
+			}
+		});
+		return mimetypeRestrictableParent;
 	}
 
 	/**

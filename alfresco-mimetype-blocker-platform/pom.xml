@@ -3,8 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>alfresco-mimetype-blocker-platform</artifactId>
     <name>Alfresco Platform/Repository JAR Module</name>
-    <description>Platform/Repo JAR Module (to be included in the alfresco.war) - part of AIO - SDK 4.0
-    </description>
+    <description>Alfresco mimetype blocker Platform/Repo JAR Module (to be included in the alfresco.war)</description>
     <packaging>jar</packaging>
 
     <parent>
